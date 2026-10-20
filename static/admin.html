@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Spin admin</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{min-height:100vh;display:grid;place-items:center;padding:24px;font:400 15px/1.5 system-ui,sans-serif;color:#fbeff3;background:radial-gradient(800px 500px at 10% -10%,#5b2a6e,transparent 60%),#160d22}
+.box{width:min(420px,100%);background:#ffffff10;border:1px solid #ffffff1f;border-radius:24px;padding:28px;display:grid;gap:14px}
+h1{font-size:22px}
+p{color:#b9a3c4;font-size:14px}
+input{width:100%;background:#0003;border:1px solid #ffffff1f;border-radius:12px;padding:11px 12px;color:inherit;font:inherit}
+button{border:0;border-radius:12px;padding:11px;font:inherit;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#ff5c8a,#ffb86b);color:#2a0f1c}
+input:focus-visible,button:focus-visible{outline:2px solid #ffb86b;outline-offset:2px}
+#msg{min-height:20px;font-size:14px}
+.err{color:#ff8fa8}.ok{color:#8fe3b0}
+code{color:#ffb86b;word-break:break-all}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main class="box">
+  <h1>Spin admin</h1>
+  <form id="login">
+    <p style="margin-bottom:10px">Enter the admin password to change the playlist.</p>
+    <input type="password" id="pw" placeholder="Admin password" autocomplete="current-password" aria-label="Admin password">
+    <button style="margin-top:12px;width:100%">Sign in</button>
+  </form>
+  <form id="edit" hidden>
+    <p style="margin-bottom:10px">Current playlist: <code id="cur">none</code></p>
+    <input id="pl" placeholder="Paste YouTube playlist link or ID" aria-label="Playlist link">
+    <button style="margin-top:12px;width:100%">Save playlist</button>
+  </form>
+  <div id="msg" role="status"></div>
+  <p><a href="/" style="color:#ffb86b">Back to the player</a></p>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let pw = '';
+const say = (t, ok) => { $('msg').textContent = t; $('msg').className = ok ? 'ok' : 'err'; };
+async function call(url, method, body) {
+  const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'X-Admin-Password': pw }, body: body && JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || 'Something went wrong.');
+  return j;
+}
+$('login').onsubmit = async e => {
+  e.preventDefault(); pw = $('pw').value;
+  try { const j = await call('/api/admin/check', 'POST'); $('login').hidden = true; $('edit').hidden = false; $('cur').textContent = j.playlist_id || 'none'; say(''); }
+  catch (err) { say(err.message); }
+};
+$('edit').onsubmit = async e => {
+  e.preventDefault();
+  try { const j = await call('/api/playlist', 'PUT', { playlist: $('pl').value }); $('cur').textContent = j.playlist_id; $('pl').value = ''; say('Saved. Everyone now gets this playlist.', true); }
+  catch (err) { say(err.message); }
+};
+</script>
+</body>
+</html>
